@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OSINT-X Dashboard</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+  form { display: flex; gap: .5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  input, select, button { padding: .5rem; font-size: 1rem; }
+  .finding { border: 1px solid #8884; border-radius: 8px; padding: .75rem 1rem; margin: .5rem 0; }
+  .badge { display: inline-block; padding: .1rem .5rem; border-radius: 999px; font-size: .75rem; font-weight: 600; color: white; }
+  .CONFIRMED { background: #1a7f37; } .SUPPORTED { background: #9a6700; }
+  .POSSIBLE { background: #6e7781; } .UNVERIFIED { background: #a1a1a1; }
+  nav a { margin-right: 1rem; }
+</style>
+</head>
+<body>
+<h1>OSINT-X</h1>
+<p>Authorized OSINT investigation dashboard. See README for legal/ethical usage requirements.</p>
+
+<form method="post" action="/">
+  <select name="kind">
+    <option value="domain">Domain</option>
+    <option value="username">Username</option>
+    <option value="email">Email</option>
+    <option value="company">Company (domain preferred)</option>
+  </select>
+  <input type="text" name="target" placeholder="Enter target..." required>
+  <button type="submit">Start Investigation</button>
+</form>
+
+{% if investigation %}
+<nav>
+  <a href="/investigation/{{ investigation.id }}/report?format=html" target="_blank">Full HTML report</a>
+  <a href="/investigation/{{ investigation.id }}/report?format=md" target="_blank">Markdown</a>
+  <a href="/investigation/{{ investigation.id }}/report?format=json" target="_blank">JSON</a>
+  <a href="/investigation/{{ investigation.id }}/graph" target="_blank">Entity graph (JSON)</a>
+</nav>
+
+<h2>Results for investigation {{ investigation.id }}</h2>
+{% for f in investigation.findings %}
+  {% if not f.unavailable %}
+  <div class="finding">
+    <strong>[{{ f.category }}] {{ f.label }}</strong>
+    <span class="badge {{ f.confidence.value }}">{{ f.confidence.value }}</span>
+    <p>{{ f.detail }}</p>
+  </div>
+  {% endif %}
+{% else %}
+  <p>No findings.</p>
+{% endfor %}
+
+{% if investigation.unavailable_sources %}
+<h3>Unavailable sources</h3>
+<ul>
+{% for u in investigation.unavailable_sources %}
+  <li>{{ u.module }} / {{ u.target }}: {{ u.error }}</li>
+{% endfor %}
+</ul>
+{% endif %}
+{% endif %}
+
+</body>
+</html>
