@@ -1,0 +1,58 @@
+name: Publish OSINT-X source
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  unpack-project:
+    if: contains(github.event.head_commit.message, 'Stage OSINT-X source archive') || contains(github.event.head_commit.message, 'Add Python and OSINT data exclusions')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract safe project source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          archive = Path("osint-x-updated.zip")
+          if not archive.is_file():
+              raise SystemExit("Archive not present; no extraction needed.")
+
+          prefix = "osint_x/"
+          blocked_parts = {".git", "__pycache__", ".venv", "venv"}
+          with ZipFile(archive) as zf:
+              for name in zf.namelist():
+                  if not name.startswith(prefix) or name.endswith("/"):
+                      continue
+                  relative = Path(name[len(prefix):])
+                  if any(part in blocked_parts for part in relative.parts):
+                      continue
+                  if relative.name.lower() == ".env":
+                      continue
+                  if relative.name == "README.md":
+                      continue
+                  destination = Path(".") / relative
+                  destination.parent.mkdir(parents=True, exist_ok=True)
+                  destination.write_bytes(zf.read(name))
+          archive.unlink()
+          print("OSINT-X source extracted; local secrets and generated data excluded.")
+          PY
+      - name: Commit published source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No source changes to publish."
+          else
+            git commit -m "Publish OSINT-X source files"
+            git push origin HEAD:main
+          fi
